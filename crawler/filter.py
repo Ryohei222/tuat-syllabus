@@ -24,16 +24,26 @@ class Depart(Enum):
 
 class Division(Enum):
     AS = '098'
-    AE = '098'
+    AE = '099'
     N = ''
 
+def get_depart(division: Division):
+    return Depart[division.name[0]]
+
+def get_faculty(depart: Depart):
+    if depart == Depart.N:
+        return Faculty.Agr 
+    if depart.value[0] == '5':
+        return Faculty.Agr
+    else:
+        return Faculty.Eng
 
 CURRENT_YEAR = 2022
 ENTRANCE_YEAR = [2019, 2020, 2021, 2022]
 
 
 class Profile:
-    def __init__(self, year: int = CURRENT_YEAR, faculty: Faculty = Faculty.Eng, depart: Depart = Depart.N, grade: int = 1) -> None:
+    def __init__(self, year: int = CURRENT_YEAR, faculty: Faculty = Faculty.Eng, depart: Depart = Depart.N, division: Division = Division.N, grade: int = 1) -> None:
         if not year in ENTRANCE_YEAR:
             year = ENTRANCE_YEAR
         if not grade in [1, 2, 3, 4, 5, 6]:
@@ -42,7 +52,28 @@ class Profile:
         self.faculty = faculty
         self.depart = depart
         self.grade = grade
+        self.division = division
 
+
+def get_all_profiles():
+    ret = list()
+    for year in ENTRANCE_YEAR:
+        for depart in Depart:
+            if depart == Depart.N:
+                continue
+            ret.append(
+                Profile(year=year, faculty=get_faculty(depart), depart=depart)
+            )
+        for division in Division:
+            if division == Division.N:
+                continue
+            depart = get_depart(division)
+            ret.append(
+                Profile(year=year, faculty=get_faculty(depart), depart=depart, division=division)
+            )
+    return ret
+
+ALL_PROFILES = get_all_profiles()
 
 class Filter:
     def __init__(self, profile: Profile) -> None:
@@ -72,7 +103,7 @@ class Course:
     name_e: str = ''
     area_name: str = ''
     req_name: str = ''
-    credit: str = ''
+    credit: int = 0
     departments: str = ''
     grade_min: int = 0
     grade_max: int = 0

@@ -1,10 +1,12 @@
 from ast import Div
+from calendar import c
 from gettext import translation
-from requests import Session
+from requests import Response, Session
 from filter import *
 from bs4 import BeautifulSoup
 from urllib.parse import urlencode
 from time import sleep
+import pickle
 
 SEARCH_MAIN_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/SearchMain.aspx'
 SEARCH_LIST_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/SearchList.aspx'
@@ -100,16 +102,9 @@ class Crawler:
 
         return courses
 
-    def get_depart_data(self, year: int, faculty: Faculty, depart: Depart, division: Division = Division.N) -> list:
-        """全科目の検索結果のページに遷移する
-
-        Args:
-            ddl_fac (str, optional): 学部を表す2桁のコード. Defaults to '02'(工学部).
-
-        Returns:
-            list: (科目名, 教員) が入ったリストを返す
+    def transition_depart_result(self, event:int, year: int, faculty: Faculty, depart: Depart, division: Division = Division.N) -> Response:
+        """実行教育課程表のページに遷移する
         """
-
         r = self.sess.get(CUR_SEARCH_URL)
         r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
             '__EVENTTARGET': 'ddl_fac', 'ddl_fac': faculty.value}))
@@ -120,11 +115,49 @@ class Crawler:
         r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
             'txt_enter_year': year, 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'ddl_div': division.value, 'btnInspection': '検索'}))
         r = self.post_form(CUR_LIST_URL, self.make_payload(r.text, {
-            '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': '$0'}))
-        sbj_url_list = []
+            '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'${event}'}))
+        return r
+
+    def get_depart_data(self, year: int, faculty: Faculty, depart: Depart, division: Division = Division.N) -> list[Course]:
+        """全科目の検索結果のページに遷移する
+
+        Args:
+            ddl_fac (str, optional): 学部を表す2桁のコード. Defaults to '02'(工学部).
+
+        Returns:
+            list: (科目名, 教員) が入ったリストを返す
+        """
+
+        # 共通教育科目
+        r = self.transition_depart_result(0, year, faculty, depart, division)
+        sbj_list = []
         soup = BeautifulSoup(r.text, 'html.parser')
-        print(r.text)
-        page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')])
+        page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')]) + 1
+        area_name = ''
+        for page in range(1, page_cnt + 1):
+            if page != 1:
+                r = self.post_form(CUR_SBJ_LIST_URL, self.make_payload(r.text, {
+                    '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'Page${page}'
+                }))
+                soup = BeautifulSoup(r.text, 'html.parser')
+            for t in soup.select('td > a[target]'):
+                c = Course()
+                T = t.parent
+                if T.previousSibling.text != '\xa0':
+                    area_name = T.previousSibling.text
+                c.area_name = area_name
+                c.name = t.text
+                c.url = t['href']
+                S = T.fetchNextSiblings(limit=3)
+                c.credit = int(S[0].text)
+                c.req_name = S[1].text
+                if S[2].text != '\xa0':
+                    c.grade_min = int(S[2].text)
+                sbj_list.append(c)
+
+        r = self.transition_depart_result(1, year, faculty, depart, division)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')]) + 1
 
         for page in range(1, page_cnt + 1):
             if page != 1:
@@ -133,13 +166,44 @@ class Crawler:
                 }))
                 soup = BeautifulSoup(r.text, 'html.parser')
             for t in soup.select('td > a[target]'):
-                sbj_url_list.append(t['href'])
+                c = Course()
+                T = t.parent
+                if T.previousSibling.text != '\xa0':
+                    area_name = T.previousSibling.text
+                c.area_name = area_name
+                c.name = t.text
+                c.url = t['href']
+                S = T.fetchNextSiblings(limit=3)
+                c.credit = int(S[0].text)
+                c.req_name = S[1].text
+                if S[2].text != '\xa0':
+                    c.grade_min = int(S[2].text)
+                sbj_list.append(c)
         
-        print(sbj_url_list)
-        # print(r.request.body)
+        return sbj_list
 
 
 
 if __name__ == '__main__':
-    # Crawler().get_all_course()
-    Crawler().get_depart_data(2022, Faculty.Eng, Depart.A, Division.AS)
+    if input('ダウンロードしますか？: ') == 'y':
+        course_list = Crawler().get_all_course()
+        with open('course_list.pickle', mode='wb') as f:
+            pickle.dump(course_list, f)
+    else:
+        with open('course_list.pickle', mode='rb') as f:
+            course_list = pickle.load(f)
+    name_to_course = dict()
+    for course in course_list:
+        if not course.name in name_to_course:
+            name_to_course[course.name] = [course]
+        else:
+            name_to_course[course.name].append(course)
+    for p in ALL_PROFILES:
+        if p.faculty != Faculty.Eng:
+            continue
+        depart_course_list = Crawler().get_depart_data(p.year, Faculty.Eng, p.depart, p.division)
+        for dcourse in depart_course_list:
+            print(f'{dcourse.name=}')
+            for course in name_to_course[dcourse.name]:
+                print(course)
+        break
