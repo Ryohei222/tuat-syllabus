@@ -57,20 +57,21 @@ class Profile:
 
 def get_all_profiles():
     ret = list()
+    for depart in Depart:
+        print(depart)
     for year in ENTRANCE_YEAR:
         for depart in Depart:
-            if depart == Depart.N:
-                continue
-            ret.append(
-                Profile(year=year, faculty=get_faculty(depart), depart=depart)
-            )
+            if depart != Depart.N:
+                ret.append(
+                    Profile(year=year, faculty=get_faculty(depart), depart=depart)
+                )
+                print(f'{depart=} {year=}')
         for division in Division:
-            if division == Division.N:
-                continue
-            depart = get_depart(division)
-            ret.append(
-                Profile(year=year, faculty=get_faculty(depart), depart=depart, division=division)
-            )
+            if division != Division.N:
+                depart = get_depart(division)
+                ret.append(
+                    Profile(year=year, faculty=get_faculty(depart), depart=depart, division=division)
+                )
     return ret
 
 ALL_PROFILES = get_all_profiles()

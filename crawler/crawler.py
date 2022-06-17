@@ -97,7 +97,6 @@ class Crawler:
         courses = []
         for i in range(1, course_cnt + 1):
             courses.append(self.get_course_detail(res, i))
-            print(courses[i - 1].name)
             sleep(0.5)
 
         return courses
@@ -110,10 +109,15 @@ class Crawler:
             '__EVENTTARGET': 'ddl_fac', 'ddl_fac': faculty.value}))
         r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
             '__EVENTTARGET': 'ddl_dpt', 'ddl_fac': faculty.value, 'ddl_dpt': depart.value}))
-        r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
-            '__EVENTTARGET': 'ddl_div', 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'ddl_div': division.value}))
-        r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
-            'txt_enter_year': year, 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'ddl_div': division.value, 'btnInspection': '検索'}))
+        # コースを指定しない場合、ddl_div 属性が存在するとエラーになる
+        if division == Division.N:
+            r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
+                'txt_enter_year': year, 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'btnInspection': '検索'}))
+        else:
+            r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
+                '__EVENTTARGET': 'ddl_div', 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'ddl_div': division.value}))
+            r = self.post_form(CUR_SEARCH_URL, self.make_payload(r.text, {
+                'txt_enter_year': year, 'ddl_fac': faculty.value, 'ddl_dpt': depart.value, 'ddl_div': division.value, 'btnInspection': '検索'}))
         r = self.post_form(CUR_LIST_URL, self.make_payload(r.text, {
             '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'${event}'}))
         return r
@@ -127,7 +131,6 @@ class Crawler:
         Returns:
             list: (科目名, 教員) が入ったリストを返す
         """
-
         # 共通教育科目
         r = self.transition_depart_result(0, year, faculty, depart, division)
         sbj_list = []
@@ -199,11 +202,15 @@ if __name__ == '__main__':
         else:
             name_to_course[course.name].append(course)
     for p in ALL_PROFILES:
+        print(f'{p.faculty=} {p.depart=} {p.division=} {p.year=}')
         if p.faculty != Faculty.Eng:
             continue
         depart_course_list = Crawler().get_depart_data(p.year, Faculty.Eng, p.depart, p.division)
         for dcourse in depart_course_list:
+            # dcourse: (科目区分, url, 単位, 受講できる学年, 必修 / 選択必修)
+            # 教員名が与えられないので取得する必要がある。
             print(f'{dcourse.name=}')
+            if not dcourse.name in name_to_course:
+                continue
             for course in name_to_course[dcourse.name]:
-                print(course)
-        break
+                print(f'{course.name=} {course.staff_name=}')
