@@ -131,6 +131,12 @@ class Course:
     language_course: str = ''
     update_date: str = ''
 
+def get_id_from_profile(p: Profile):
+    return ALL_PROFILES.index(p)
+
+def get_profile_from_id(id: int):
+    return ALL_PROFILES[id]
+
 def course_to_tuple(c: Course):
     t = (
         c.code,

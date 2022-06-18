@@ -122,6 +122,7 @@ class Crawler:
                 'rdlGrid:ddlLines': '50', f'rdlGrid:gridList:_ctl{i + 2}:_ctl0': '詳細'
             }))
             course_list.append(self.extract_course_detail(r.text))
+            print(self.extract_course_detail(r.text))
             sleep(INTERVAL)
         return course_list
 
@@ -174,7 +175,6 @@ class Crawler:
                     for c in course_list:
                         c.req_name = req_name
                         sbj_list.append(c)
-                return sbj_list
           
         return sbj_list
 
