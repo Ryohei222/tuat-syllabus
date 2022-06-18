@@ -57,8 +57,6 @@ class Profile:
 
 def get_all_profiles():
     ret = list()
-    for depart in Depart:
-        print(depart)
     for year in ENTRANCE_YEAR:
         for depart in Depart:
             if depart != Depart.N:
@@ -132,3 +130,40 @@ class Course:
     language: str = ''
     language_course: str = ''
     update_date: str = ''
+
+def course_to_tuple(c: Course):
+    t = (
+        c.code,
+        c.name,
+        c.name_e,
+        c.area_name,
+        c.req_name,
+        c.departments,
+        c.term,
+        c.lecture_type,
+        c.staff_name,
+        c.staff_name_e,
+        c.staff_section_name,
+        c.room_name,
+        c.e_mail,
+        c.outline,
+        c.standard,
+        c.content,
+        c.requirements,
+        c.textbook,
+        c.reference_book,
+        c.grading,
+        c.message,
+        c.keyword,
+        c.office_hours,
+        c.note1,
+        c.note2,
+        c.url,
+        c.language,
+        c.language_course,
+        c.update_date,
+        c.grade_min,
+        c.grade_max,
+        c.credit,
+    )
+    return t

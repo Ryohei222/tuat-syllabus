@@ -1,7 +1,4 @@
-from ast import Div
-from calendar import c
-from gettext import translation
-from requests import Response, Session
+from requests import Response, Session, get, request
 from filter import *
 from bs4 import BeautifulSoup
 from urllib.parse import urlencode
@@ -14,39 +11,63 @@ CUR_SEARCH_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/CurSearch.aspx'
 CUR_LIST_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/CurList.aspx'
 CUR_SBJ_LIST_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/CurSbjList.aspx'
 
+INTERVAL = 0.5
 
 class Crawler:
     def __init__(self):
         self.sess = Session()
 
-    def extract_params(self, res: str) -> dict:
+    def extract_params(self, html: str) -> dict:
         """HTML 内の form のパラメータを抽出する
 
         Args:
-            res (str): パラメータを抽出する HTML
+            html (str): パラメータを抽出する HTML
 
         Returns:
             dict: パラメータ名: パラメーターの値　が入った dict
         """
 
         params = {}
-        soup = BeautifulSoup(res, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser')
         for elem in soup.find_all('input'):
             if elem['type'] in ('hidden', 'text'):
                 params[elem['id']] = elem.get('value', '')
         return params
 
-    def make_payload(self, res: str, params: dict):
-        payload = self.extract_params(res) | params
+    def make_payload(self, html: str, params: dict) -> dict:
+        payload = self.extract_params(html) | params
         return payload
 
+    def extract_course_detail(self, html: str) -> Course:
+        soup = BeautifulSoup(html, 'html.parser')
+        course = Course()
 
-    def post_form(self, url, params):
+        table6 = soup.select('#Table6 > tr > td > span')
+        for i, t in enumerate(table6):
+            setattr(course, COURSE_TABLE6_INFOS[i], t.text)
+
+        table4 = [r for r in soup.select(
+            '#Table4 > tr > td') if len(r.text) >= 2]
+        for i in range(1, 32, 2):
+            setattr(course, COURSE_TABLE4_INFOS[i // 2],
+                    table4[i].find_next('span').text)
+
+        course.name_e = course.name_e[1:-1]
+        course.staff_name_e = course.staff_name_e[1:-1]
+        if type(course.grade_min) == str and course.grade_min.isdigit():
+            course.grade_min = int(course.grade_min)
+        if type(course.grade_max) == str and course.grade_max.isdigit():
+            course.grade_max = int(course.grade_max)
+        if type(course.credit) == str and course.credit.isdigit():
+            course.credit = int(course.credit)
+        return course
+
+    def post_form(self, url, params) -> Response:
         return self.sess.post(url, data=urlencode(params), headers={
             'Content-Type': 'application/x-www-form-urlencoded'
         })
 
-    def transition_all_course_result(self, ddl_fac: str = '02') -> str:
+    def transition_all_course_result(self, ddl_fac: str = '02') -> Response:
         """全科目の検索結果のページに遷移する
 
         Args:
@@ -61,45 +82,48 @@ class Crawler:
             'ddl_fac': ddl_fac, 'ddl_year': '2022', 'btnSearch': '検　索'}))
         r = self.post_form(SEARCH_LIST_URL, self.make_payload(r.text, {
             '__EVENTTARGET': 'rdlGrid$ddlLines', 'rdlGrid:ddlLines': '0'}))
-        return r.text
+        return r
 
-    def get_one_course_detail(self, ddl_fac, num):
+    def get_one_course_detail(self, ddl_fac, num) -> Course:
+        # test に移す
         r = self.transition_all_course_result(ddl_fac)
         return self.get_course_detail(r, num)
 
-    def get_course_detail(self, r, num):
-        res = self.sess.post(SEARCH_LIST_URL, self.make_payload(r, {
-            'rdlGrid:ddlLines': '0', f'rdlGrid:gridList:_ctl{num + 2}:_ctl0': '詳細'
+    def get_course_detail(self, r:Response, num:int , ddlLines:int=0) -> Course:
+        # ddlLines: 1ページあたりの件数
+        res = self.sess.post(SEARCH_LIST_URL, self.make_payload(r.text, {
+            'rdlGrid:ddlLines': f'{ddlLines}', f'rdlGrid:gridList:_ctl{num + 2}:_ctl0': '詳細'
         }))
-        soup = BeautifulSoup(res.text, 'html.parser')
-        course = Course()
+        print(res.request.body)
+        return self.extract_course_detail(res.text)
 
-        table6 = soup.select('#Table6 > tr > td > span')
-        for i, t in enumerate(table6):
-            setattr(course, COURSE_TABLE6_INFOS[i], t.text)
-
-        table4 = [r for r in soup.select(
-            '#Table4 > tr > td') if len(r.text) >= 2]
-
-        for i in range(1, 32, 2):
-            setattr(course, COURSE_TABLE4_INFOS[i // 2],
-                    table4[i].find_next('span').text)
-
-        course.name_e = course.name_e[1:-1]
-        course.staff_name_e = course.staff_name_e[1:-1]
-        return course
-
-    def get_all_course(self, ddl_fac: str = '02'):
-        res = self.transition_all_course_result(ddl_fac)
-        soup = BeautifulSoup(res, 'html.parser')
+    def get_all_course(self, ddl_fac: str = '02') -> list[Course]:
+        r = self.transition_all_course_result(ddl_fac)
+        soup = BeautifulSoup(r.text, 'html.parser')
         course_cnt = int(soup.select('#rdlGrid_gridList > tr')
                          [-2].select('font')[0].text)
-        courses = []
+        course_list = list()
         for i in range(1, course_cnt + 1):
-            courses.append(self.get_course_detail(res, i))
-            sleep(0.5)
+            course_list.append(self.get_course_detail(r, i))
+            sleep(INTERVAL)
 
-        return courses
+        return course_list
+
+    def get_courses(self, url: str) -> list[Course]:
+        r = get(url)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        course_cnt = len(soup.select('#rdlGrid_gridList > tr')) - 2
+        print(course_cnt)
+        course_list = list()
+        for i in range(1, course_cnt + 1):
+            s = Session()
+            r = s.get(url)
+            r = s.post(SEARCH_LIST_URL, self.make_payload(r.text, {
+                'rdlGrid:ddlLines': '50', f'rdlGrid:gridList:_ctl{i + 2}:_ctl0': '詳細'
+            }))
+            course_list.append(self.extract_course_detail(r.text))
+            sleep(INTERVAL)
+        return course_list
 
     def transition_depart_result(self, event:int, year: int, faculty: Faculty, depart: Depart, division: Division = Division.N) -> Response:
         """実行教育課程表のページに遷移する
@@ -132,62 +156,31 @@ class Crawler:
             list: (科目名, 教員) が入ったリストを返す
         """
         # 共通教育科目
-        r = self.transition_depart_result(0, year, faculty, depart, division)
-        sbj_list = []
-        soup = BeautifulSoup(r.text, 'html.parser')
-        page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')]) + 1
-        area_name = ''
-        for page in range(1, page_cnt + 1):
-            if page != 1:
-                r = self.post_form(CUR_SBJ_LIST_URL, self.make_payload(r.text, {
-                    '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'Page${page}'
-                }))
-                soup = BeautifulSoup(r.text, 'html.parser')
-            for t in soup.select('td > a[target]'):
-                c = Course()
-                T = t.parent
-                if T.previousSibling.text != '\xa0':
-                    area_name = T.previousSibling.text
-                c.area_name = area_name
-                c.name = t.text
-                c.url = t['href']
-                S = T.fetchNextSiblings(limit=3)
-                c.credit = int(S[0].text)
-                c.req_name = S[1].text
-                if S[2].text != '\xa0':
-                    c.grade_min = int(S[2].text)
-                sbj_list.append(c)
+        for i in range(2):
+            r = self.transition_depart_result(i, year, faculty, depart, division)
+            sbj_list = []
+            soup = BeautifulSoup(r.text, 'html.parser')
+            page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')]) + 1
 
-        r = self.transition_depart_result(1, year, faculty, depart, division)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        page_cnt = len([1 for a in soup.select('a') if 'gvCurList' in a.get('href', '')]) + 1
-
-        for page in range(1, page_cnt + 1):
-            if page != 1:
-                r = self.post_form(CUR_SBJ_LIST_URL, self.make_payload(r.text, {
-                    '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'Page${page}'
-                }))
-                soup = BeautifulSoup(r.text, 'html.parser')
-            for t in soup.select('td > a[target]'):
-                c = Course()
-                T = t.parent
-                if T.previousSibling.text != '\xa0':
-                    area_name = T.previousSibling.text
-                c.area_name = area_name
-                c.name = t.text
-                c.url = t['href']
-                S = T.fetchNextSiblings(limit=3)
-                c.credit = int(S[0].text)
-                c.req_name = S[1].text
-                if S[2].text != '\xa0':
-                    c.grade_min = int(S[2].text)
-                sbj_list.append(c)
-        
+            for page in range(1, page_cnt + 1):
+                if page != 1:
+                    r = self.post_form(CUR_SBJ_LIST_URL, self.make_payload(r.text, {
+                        '__EVENTTARGET': 'gvCurList', '__EVENTARGUMENT': f'Page${page}'
+                    }))
+                    soup = BeautifulSoup(r.text, 'html.parser')
+                for t in soup.select('td > a[target]'):
+                    course_list = self.get_courses(t['href'])
+                    req_name = t.parent.fetchNextSiblings(limit=3)[1].text
+                    for c in course_list:
+                        c.req_name = req_name
+                        sbj_list.append(c)
+                return sbj_list
+          
         return sbj_list
 
-
-
 if __name__ == '__main__':
+    depart_course_list = Crawler().get_depart_data(2020, Faculty.Eng, Depart.A, Division.AS)
+    '''
     if input('ダウンロードしますか？: ') == 'y':
         course_list = Crawler().get_all_course()
         with open('course_list.pickle', mode='wb') as f:
@@ -209,8 +202,9 @@ if __name__ == '__main__':
         for dcourse in depart_course_list:
             # dcourse: (科目区分, url, 単位, 受講できる学年, 必修 / 選択必修)
             # 教員名が与えられないので取得する必要がある。
-            print(f'{dcourse.name=}')
+            print(f'{dcourse.url}')
             if not dcourse.name in name_to_course:
                 continue
             for course in name_to_course[dcourse.name]:
                 print(f'{course.name=} {course.staff_name=}')
+    '''
