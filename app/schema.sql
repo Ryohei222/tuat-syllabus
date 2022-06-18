@@ -1,4 +1,7 @@
-create table if not exists courses(
+drop table if exists courses;
+drop table if exists profiles;
+
+create table courses(
     code text primary key,
     'name' text not null,
     name_e text not null,
@@ -32,9 +35,11 @@ create table if not exists courses(
     grade_max int not null,
     credit int not null,
     classcode text not null
-)
+);
 
-create table if not exists profiles(
-    profile_id int primary key,
-    code text not null
-)
+create table profiles(
+    id int primary key autoincrement,
+    profile_id int,
+    code text not null,
+    foreign key (code) references courses(code)
+);

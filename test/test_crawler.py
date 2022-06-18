@@ -1,5 +1,4 @@
-from crawler import Crawler
-
+from app.crawler import Crawler
 
 class TestCrawler:
     def test_single_download(self):
