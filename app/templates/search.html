@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}検索{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="get">
+    <input name="year" value="2019">
+    <input name="depart" value="51">
+    <button>検索</button>
+  </form>
+  {% if r %}
+  <h2>検索結果</h2>
+  {% for c in r %}
+    <details>
+    <summary>
+      <a href="{{ url_for('course', code=c['code']) }}">
+        <h3>{{ c['name'] }}</h3>
+      </a>
+    </summary>
+    {% for key, value in c.__dict__.items() %}
+      {% if key == 'name' %}
+      {% else %}
+        {{ key }} : {{ value }}, 
+      {% endif %}
+    {% endfor %}
+    </details>
+  {% endfor %}
+  {% endif %}
+{% endblock %}

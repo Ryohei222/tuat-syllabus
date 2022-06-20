@@ -1,5 +1,6 @@
 from enum import Enum, unique, auto
 from dataclasses import dataclass
+import pickle
 
 @unique
 class Faculty(Enum):
@@ -8,6 +9,7 @@ class Faculty(Enum):
     # GAgr = '05'
     # GEng = '06'
 
+@unique
 class Depart(Enum):
     An = '51'
     Bn = '52'
@@ -20,12 +22,13 @@ class Depart(Enum):
     U = '64'
     M = '65'
     A = '66'
-    N = ''
+    N = '00'
 
+@unique
 class Division(Enum):
     AS = '098'
     AE = '099'
-    N = ''
+    N = '000'
 
 def get_depart(division: Division):
     return Depart[division.name[0]]
@@ -41,21 +44,29 @@ def get_faculty(depart: Depart):
 CURRENT_YEAR = 2022
 ENTRANCE_YEAR = [2019, 2020, 2021, 2022]
 
+class InvalidYearError(Exception):
+    def __str__(self) -> str:
+        return '対応していない入学年度です'
+
+class InvalidProfileError(Exception):
+    def __str__(self) -> str:
+        return '(Faculty, Depart, Division) の組が正しくありません'
 
 class Profile:
-    def __init__(self, year: int = CURRENT_YEAR, faculty: Faculty = Faculty.Eng, depart: Depart = Depart.N, division: Division = Division.N, grade: int = 1) -> None:
+    def __init__(self, year: int, faculty: Faculty, depart: Depart, division: Division = Division.N, grade: int = 1) -> None:
         if not year in ENTRANCE_YEAR:
-            year = ENTRANCE_YEAR
-        if not grade in [1, 2, 3, 4, 5, 6]:
-            grade = 1
+            raise InvalidYearError()
         self.year = year
         self.faculty = faculty
+        if get_faculty(depart) != faculty:
+            raise InvalidProfileError()
         self.depart = depart
-        self.grade = grade
+        if division != Division.N and get_depart(division) != depart:
+            raise InvalidProfileError()
         self.division = division
+        self.grade = grade
 
-
-def get_all_profiles():
+def get_all_profiles() -> list[Profile]:
     ret = list()
     for year in ENTRANCE_YEAR:
         for depart in Depart:
@@ -72,28 +83,7 @@ def get_all_profiles():
                 )
     return ret
 
-ALL_PROFILES = get_all_profiles()
-
-class Filter:
-    def __init__(self, profile: Profile) -> None:
-        self.profile = profile
-        pass
-
-
-COURSE_TABLE6_INFOS = (
-    'name', 'name_e', 'area_name', 'req_name', 'credit',
-    'departments', 'grade_min', 'grade_max', 'term', 'lecture_type', 'code',
-    'staff_name', 'staff_name_e', 'staff_section_name',
-    'room_name', 'e_mail'
-)
-
-COURSE_TABLE4_INFOS = (
-    'outline', 'standard', 'content', 'requirements',
-    'textbook', 'reference_book', 'grading', 'message',
-    'keyword', 'office_hours', 'note1', 'note2', 'url',
-    'language', 'language_course', 'update_date'
-)
-
+ALL_PROFILES: list[Profile] = get_all_profiles()
 
 @dataclass
 class Course:
@@ -107,6 +97,7 @@ class Course:
     grade_min: int = 0
     grade_max: int = 0
     term: str = ''
+    schedule: str = ''
     lecture_type: str = ''
     code: str = ''
     staff_name: str = ''
@@ -130,46 +121,3 @@ class Course:
     language: str = ''
     language_course: str = ''
     update_date: str = ''
-
-def get_id_from_profile(p: Profile):
-    return ALL_PROFILES.index(p)
-
-def get_profile_from_id(id: int):
-    return ALL_PROFILES[id]
-
-def course_to_tuple(c: Course):
-    t = (
-        c.code,
-        c.name,
-        c.name_e,
-        c.area_name,
-        c.req_name,
-        c.departments,
-        c.term,
-        c.lecture_type,
-        c.staff_name,
-        c.staff_name_e,
-        c.staff_section_name,
-        c.room_name,
-        c.e_mail,
-        c.outline,
-        c.standard,
-        c.content,
-        c.requirements,
-        c.textbook,
-        c.reference_book,
-        c.grading,
-        c.message,
-        c.keyword,
-        c.office_hours,
-        c.note1,
-        c.note2,
-        c.url,
-        c.language,
-        c.language_course,
-        c.update_date,
-        c.grade_min,
-        c.grade_max,
-        c.credit,
-    )
-    return t

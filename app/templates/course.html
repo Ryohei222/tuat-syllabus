@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}{{ c['name'] }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+{% for key, value in c.items() %}
+<p id="{{ key }}">{{ key }} : {{ value }}</p>
+{% endfor %}
+{% endblock %}

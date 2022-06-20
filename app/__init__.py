@@ -21,8 +21,10 @@ def create_app(test_config=None):
         pass
     
     from app import search
-
     app.register_blueprint(search.bp)
+
+    from app import course
+    app.register_blueprint(course.bp)
 
     '''
     @app.route("/hello")
