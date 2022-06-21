@@ -5,27 +5,117 @@
 {% endblock %}
 
 {% block content %}
-  <form method="get">
-    <input name="year" value="2019">
-    <input name="depart" value="51">
+  <div class="bg-light text-dark">
+    <form method="get">
+    <!--
+      <div>
+      <input type="radio" class="btn-check" name="faculty" value="01" id="faculty-01" autocomplete="off" checked>
+      <label class="btn btn-outline-primary" for="faculty-01">農学部</label>
+      <input type="radio" class="btn-check" name="faculty" value="02" id="faculty-02" autocomplete="off">
+      <label class="btn btn-outline-primary" for="faculty-02">工学部</label>
+    </div>
+    -->
+    <div class="btn-group d-flex depart-input" role="group">
+      <input type="radio" class="btn-check" name="depart" value="51" id="depart-51" autocomplete="off" checked>
+      <label class="btn btn-outline-primary" for="depart-51">An</label>
+      <input type="radio" class="btn-check" name="depart" value="52" id="depart-52" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-52">Bn</label>
+      <input type="radio" class="btn-check" name="depart" value="53" id="depart-53" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-53">En</label>
+      <input type="radio" class="btn-check" name="depart" value="54" id="depart-54" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-54">Rn</label>
+      <input type="radio" class="btn-check" name="depart" value="56" id="depart-56" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-56">Vn</label>
+    </div>
+    <br>
+    <div class="btn-group d-flex depart-input" role="group">
+      <input type="radio" class="btn-check" name="depart" value="66" id="depart-66" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-66">A</label>
+      <input type="radio" class="btn-check" name="depart" value="61" id="depart-61" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-61">B</label>
+      <input type="radio" class="btn-check" name="depart" value="63" id="depart-63" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-63">C</label>
+      <input type="radio" class="btn-check" name="depart" value="62" id="depart-62" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-62">L</label>
+      <input type="radio" class="btn-check" name="depart" value="65" id="depart-65" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-65">M</label>
+      <input type="radio" class="btn-check" name="depart" value="64" id="depart-64" autocomplete="off">
+      <label class="btn btn-outline-primary" for="depart-64">U</label>
+    </div>
+    <br>
+    <div class="btn-group" role="group" id="division-62">
+      <input type="radio" class="btn-check" name="division" value="092" id="division-092" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-092">L1</label>
+      <input type="radio" class="btn-check" name="division" value="093" id="division-093" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-093">L2</label>
+    </div>
+    <div class="btn-group" role="group" id="division-63">
+      <input type="radio" class="btn-check" name="division" value="094" id="division-094" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-094">C1</label>
+      <input type="radio" class="btn-check" name="division" value="095" id="division-095" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-095">C2</label>
+    </div>
+    <div class="btn-group" role="group" id="division-65">
+      <input type="radio" class="btn-check" name="division" value="096" id="division-096" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-096">M1</label>
+      <input type="radio" class="btn-check" name="division" value="097" id="division-097" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-097">M2</label>
+    </div>
+    <div class="btn-group" role="group" id="division-66">
+      <input type="radio" class="btn-check" name="division" value="098" id="division-098" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-098">AS</label>
+      <input type="radio" class="btn-check" name="division" value="099" id="division-099" autocomplete="off">
+      <label class="btn btn-outline-primary" for="division-099">AE</label>
+    </div>
+    <br>
     <button>検索</button>
   </form>
+  </div>
   {% if r %}
   <h2>検索結果</h2>
-  {% for c in r %}
-    <details>
-    <summary>
-      <a href="{{ url_for('course', code=c['code']) }}">
-        <h3>{{ c['name'] }}</h3>
-      </a>
-    </summary>
-    {% for key, value in c.__dict__.items() %}
-      {% if key == 'name' %}
-      {% else %}
-        {{ key }} : {{ value }}, 
-      {% endif %}
+  <div id="raw-result" style="display: none;">
+     {% for c in r %}
+      <details>
+      <summary>
+        <a href="{{ url_for('course', code=c['code']) }}">
+          {{ c['name'] }}
+        </a>
+      </summary>
+      {% for key, value in c.__dict__.items() %}
+        {% if key == 'name' %}
+        {% else %}
+          {{ key }} : {{ value }}, 
+        {% endif %}
+      {% endfor %}
+      </details>
     {% endfor %}
-    </details>
-  {% endfor %}
+  </div>
+  <div id="zipped-result">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>name</th>
+          <th>staff_name</th>
+          <th>term</th>
+          <th>schedule</th>
+          <th>code</th>
+        </tr>
+      </thead>
+      {% for course_name, course_list in d.items() %}
+        <tbody>
+          {% for course in course_list %}
+            <tr>
+              <td>{{ course['name'] }}</td>
+              <td>{{ course['staff_name'] }}</td>
+              <td>{{ course['term'] }}</td>
+              <td>{{ course['schedule'] }}</td>
+              <td><a href="{{ url_for('course', code=course['code']) }}">{{ course['code'] }}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      {% endfor %}
+      </table>
+  </div>
   {% endif %}
+  <script src="{{ url_for('static', filename='search.js') }}"></script>
 {% endblock %}

@@ -26,14 +26,20 @@ class Depart(Enum):
 
 @unique
 class Division(Enum):
+    L1 = '092'
+    L2 = '093'
+    C1 = '094'
+    C2 = '095'
+    M1 = '096'
+    M2 = '097'
     AS = '098'
     AE = '099'
     N = '000'
 
-def get_depart(division: Division):
+def get_depart(division: Division) -> Depart:
     return Depart[division.name[0]]
 
-def get_faculty(depart: Depart):
+def get_faculty(depart: Depart) -> Faculty:
     if depart == Depart.N:
         return Faculty.Agr 
     if depart.value[0] == '5':
@@ -66,21 +72,22 @@ class Profile:
         self.division = division
         self.grade = grade
 
+'''
+'''
 def get_all_profiles() -> list[Profile]:
     ret = list()
-    for year in ENTRANCE_YEAR:
-        for depart in Depart:
-            if depart != Depart.N:
-                ret.append(
-                    Profile(year=year, faculty=get_faculty(depart), depart=depart)
-                )
-                print(f'{depart=} {year=}')
-        for division in Division:
-            if division != Division.N:
-                depart = get_depart(division)
-                ret.append(
-                    Profile(year=year, faculty=get_faculty(depart), depart=depart, division=division)
-                )
+    year = 2019
+    for depart in Depart:
+        if depart != Depart.N:
+            ret.append(
+                Profile(year=year, faculty=get_faculty(depart), depart=depart)
+            )
+    for division in Division:
+        if division != Division.N:
+            depart = get_depart(division)
+            ret.append(
+                Profile(year=year, faculty=get_faculty(depart), depart=depart, division=division)
+            )
     return ret
 
 ALL_PROFILES: list[Profile] = get_all_profiles()
@@ -121,3 +128,12 @@ class Course:
     language: str = ''
     language_course: str = ''
     update_date: str = ''
+
+def idx_schedule(course: Course) -> int:
+    schedule = course.schedule
+    if not (schedule[0] in '月火水木金'):
+        return 100
+    s = schedule.split(',')[0]
+    a = '月火水木金'.find(s[0])
+    b = int(s[1])
+    return a * 10 + b

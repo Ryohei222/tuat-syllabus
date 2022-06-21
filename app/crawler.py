@@ -146,6 +146,6 @@ class Crawler:
                     for c in course_list:
                         c.req_name = req_name
                         sbj_list.append(c)
-                        print(c)
+                        print(f'{year=} {depart=} {division=} {c.name} {c.code}')
           
         return sbj_list
