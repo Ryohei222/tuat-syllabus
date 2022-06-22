@@ -77,7 +77,7 @@
      {% for c in r %}
       <details>
       <summary>
-        <a href="{{ url_for('course', code=c['code']) }}">
+        <a href="{{ url_for('course.course', code=c['code']) }}">
           {{ c['name'] }}
         </a>
       </summary>
@@ -109,7 +109,7 @@
               <td>{{ course['staff_name'] }}</td>
               <td>{{ course['term'] }}</td>
               <td>{{ course['schedule'] }}</td>
-              <td><a href="{{ url_for('course', code=course['code']) }}">{{ course['code'] }}</a></td>
+              <td><a href="{{ url_for('course.course', code=course['code']) }}">{{ course['code'] }}</a></td>
             </tr>
           {% endfor %}
         </tbody>

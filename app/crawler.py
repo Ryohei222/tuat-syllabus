@@ -1,8 +1,10 @@
-from requests import Response, Session, get, request
-from filter import *
-from bs4 import BeautifulSoup
-from urllib.parse import urlencode
 from time import sleep
+from urllib.parse import urlencode
+
+from bs4 import BeautifulSoup
+from requests import Response, Session, get
+
+from app.filter import *
 
 SEARCH_MAIN_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/SearchMain.aspx'
 SEARCH_LIST_URL = 'https://spica.gakumu.tuat.ac.jp/syllabus/SearchList.aspx'

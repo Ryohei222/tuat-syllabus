@@ -4,10 +4,10 @@ from flask import Flask
 
 
 def create_app(test_config=None):
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True) # instance/ の中にある config.py を読み込めるようになる
     app.config.from_mapping(
         SECRET_KEY="dev",
-        DATABASE=os.path.join(app.instance_path, "data.sqlite"),
+        DATABASE=os.path.join(app.instance_path, "temp.sqlite3")
     )
 
     if test_config is None:
@@ -20,25 +20,10 @@ def create_app(test_config=None):
     except OSError:
         pass
     
-    from app import search
+    from app import search, course
     app.register_blueprint(search.bp)
-
-    from app import course
     app.register_blueprint(course.bp)
 
-    '''
-    @app.route("/hello")
-    def hello():
-        return "Hello, World!"
-
-    from flaskr import db
-
-    db.init_app(app)
-
-    from flaskr import auth, blog
-
-    app.register_blueprint(auth.bp)
-    app.register_blueprint(blog.bp)
-    app.add_url_rule("/", endpoint="index")
-    '''
+    # app.add_url_rule("/", endpoint="search")
+    
     return app

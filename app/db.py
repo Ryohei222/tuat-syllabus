@@ -1,40 +1,60 @@
-import sqlite3
 import pickle
-from filter import Course, Profile   
-# from flask import current_app, g
-# import click
-# from flask.cli import with_appcontext
+import sqlite3
+import sys
 
-DATABASE = 'db.sqlite3'
+import click
+from flask import current_app, g
+from flask.cli import with_appcontext
 
-def get_db(path='') -> sqlite3.Connection:
-    '''
+from app.crawler import Crawler
+from app.filter import ALL_PROFILES, Course, Profile
+from app import filter
+
+sys.modules['filter'] = filter
+
+def get_db() -> sqlite3.Connection:
     if 'db' not in g:
         g.db = sqlite3.connect(
-            DATABASE,
+            current_app.config['DATABASE'],
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.row_factory = sqlite3.Row
     return g.db
-    '''
-    conn = sqlite3.connect(path + DATABASE, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.row_factory = sqlite3.Row
-    return conn
-# conn = sqlite3.connect('schema.db')
 
-def init_tables(conn: sqlite3.Connection, path='app/'):
+def close_db(e=None):
+    db = g.pop('db', None)
+
+    if db is not None:
+        db.close()
+
+def init_tables(path='app/'):
+    conn = get_db()
     conn.executescript(open(path + 'schema.sql', 'r').read())
 
-def course_exists(conn: sqlite3.Connection, code: str):
+@click.command('make-db')
+@with_appcontext
+def make_db():
+    conn = get_db()
+    init_tables()
+    for profile in ALL_PROFILES:
+        course_list = Crawler().get_depart_data(profile.year, profile.faculty, profile.depart, profile.division)
+        insert_courses(course_list)
+        insert_profile_data(course_list, profile)
+        conn.commit()
+    conn.close()
+
+def course_exists(code: str):
     '''指定した時間割コードに対応する科目が存在するか
     '''
+    conn = get_db()
     cur = conn.execute('select * from courses where code = ?', (code,))
     return cur.fetchone() != None
 
-def insert_courses(conn: sqlite3.Connection, course_list: list[Course]) -> int:
+def insert_courses(course_list: list[Course]) -> int:
+    conn = get_db()
     cnt = 0
     for course in course_list:
-        if course_exists(conn, course.code):
+        if course_exists(course.code):
             continue
         conn.execute('insert into courses values(?, ?, ?, ?, ?, ?, ?, ?)',
             (course.code,
@@ -49,7 +69,8 @@ def insert_courses(conn: sqlite3.Connection, course_list: list[Course]) -> int:
         cnt += 1
     return cnt
 
-def get_course_from_code(conn: sqlite3.Connection, code: str) -> Course:
+def get_course_from_code(code: str) -> Course:
+    conn = get_db()
     cur = conn.execute('select course from courses where code = ?', (code,))
     return pickle.loads(cur.fetchone()[0])
 
@@ -62,14 +83,16 @@ def get_profile_from_id(pid: str):
         pid[:4], pid[4:6], pid[6:8], pid[8:]
     return Profile(year, faculty, depart, division)
 
-def insert_profile_data(conn: sqlite3.Connection, course_list: list[Course], profile: Profile):
+def insert_profile_data(course_list: list[Course], profile: Profile):
+    conn = get_db()
     for course in course_list:
         conn.execute('insert into profiles (profile_id, code)values(?, ?)', (get_id_from_profile(profile), course.code))
 
-def get_course_from_profile(conn: sqlite3.Connection, profile: Profile):
+def get_course_from_profile(profile: Profile):
+    conn = get_db()
     rows = conn.execute('select code from profiles where profile_id = ?', (get_id_from_profile(profile),)).fetchall()
     course_list = list()
     for row in rows:
-        course_list.append(get_course_from_code(conn, row[0]))
+        course_list.append(get_course_from_code(row[0]))
     return course_list
     
