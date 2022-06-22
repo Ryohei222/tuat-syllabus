@@ -1,6 +1,5 @@
 import sqlite3
 
-import pytest
 from app import db
 from app.filter import *
 

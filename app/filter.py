@@ -1,6 +1,5 @@
-from enum import Enum, unique, auto
+from enum import Enum, unique
 from dataclasses import dataclass
-import pickle
 
 @unique
 class Faculty(Enum):
@@ -16,8 +15,8 @@ class Depart(Enum):
     En = '53'
     Rn = '54'
     Vn = '56'
-    B = '61'
-    L = '62'
+    L = '61'
+    B = '62'
     C = '63'
     U = '64'
     M = '65'
@@ -28,8 +27,8 @@ class Depart(Enum):
 class Division(Enum):
     L1 = '092'
     L2 = '093'
-    C1 = '094'
-    C2 = '095'
+    U1 = '094'
+    U2 = '095'
     M1 = '096'
     M2 = '097'
     AS = '098'
@@ -72,8 +71,6 @@ class Profile:
         self.division = division
         self.grade = grade
 
-'''
-'''
 def get_all_profiles() -> list[Profile]:
     ret = list()
     year = 2019

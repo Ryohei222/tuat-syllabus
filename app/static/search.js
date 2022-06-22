@@ -5,7 +5,7 @@ function hideActiveDivision() {
     }
 }
 
-let dividedDeparts = ["62", "63", "65", "66"]
+let dividedDeparts = ["61", "64", "65", "66"]
 
 var radios = document.querySelectorAll('.depart-input > input');
 for (var radio of radios) {
